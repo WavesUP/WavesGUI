@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Export accounts</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.5/require.js"></script>
+</head>
+<body>
+<h1>Exporting your accounts...</h1>
+<script type="application/javascript">
+    requirejs(['js/browser-bus.min'], function (bus) {
+        var webBus = new bus.Bus(new bus.WindowAdapter(
+                { origin: 'https://waveswallet.io', win: window },
+                { origin: 'https://localhost:8080', win: window.opener || window.parent }
+        ));
+
+        webBus.registerRequestHandler('getLocalStorageData', function () {
+            return JSON.parse(window.localStorage.getItem('Wavesmainnet'));
+        });
+
+        webBus.dispatchEvent('export-ready');
+    });
+</script>
+</body>
+</html>

@@ -573,6 +573,18 @@ module.exports = function (grunt) {
                 },
                 cwd: 'distr/<%= meta.configurations.mainnet.name %>',
                 src: '**/*'
+            },
+            'export': {
+                options: {
+                    bucket: 'waveswallet.io'
+                },
+                files: [{
+                    src: 'src/export.html',
+                    dest: 'export.html'
+                },{
+                    src: 'node_modules/@waves/waves-browser-bus/dist/browser-bus.min.js',
+                    dest: 'js/browser-bus.min.js'
+                }]
             }
         },
         cloudfront: {
@@ -580,7 +592,7 @@ module.exports = function (grunt) {
                 accessKeyId: process.env['WALLET_AWS_ACCESS_KEY_ID'],
                 secretAccessKey: process.env['WALLET_AWS_ACCESS_SECRET'],
                 invalidations: [
-                    '/index.html',
+                    '/*.html',
                     '/css/*',
                     '/js/*'
                 ]

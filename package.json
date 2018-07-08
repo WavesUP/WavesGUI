@@ -11,6 +11,7 @@
     "node": ">= 0.10.0"
   },
   "devDependencies": {
+    "@waves/waves-browser-bus": "0.0.7",
     "autoprefixer": "^6.7.6",
     "cssnano": "^3.10.0",
     "electron": "^1.6.8",
