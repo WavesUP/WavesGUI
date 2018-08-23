@@ -56,7 +56,7 @@
      * @return {AppRun}
      */
     const run = function ($rootScope, utils, user, $state, state, modalManager, storage,
-                          notification, decorators, waves, ModalRouter) {
+                          notification, decorators, waves, ModalRouter, SimpleQueue) {
 
         const phone = WavesApp.device.phone();
         const tablet = WavesApp.device.tablet();
@@ -105,30 +105,46 @@
                 this._stopLoader();
                 this._initializeLogin();
                 this._initializeOutLinks();
-
-                if (WavesApp.isDesktop()) {
-                    window.listenMainProcessEvent((type, url) => {
-                        const parts = utils.parseElectronUrl(url);
-                        const path = parts.path.replace(/\/$/, '') || parts.path;
-                        if (path) {
-                            const noLogin = path === '/' || WavesApp.stateTree.where({ noLogin: true }).some(item => {
-                                const url = item.get('url') || item.id;
-                                return parts.path === url;
-                            });
-                            if (noLogin) {
-                                location.hash = `#!${path}${parts.search}`;
-                            } else {
-                                user.onLogin().then(() => {
-                                    setTimeout(() => {
-                                        location.hash = `#!${path}${parts.search}`;
-                                    }, 1000);
-                                });
-                            }
-                        }
-                    });
-                }
+                this._initializeOpenDesktopProtocol();
 
                 $rootScope.WavesApp = WavesApp;
+            }
+
+            _initializeOpenDesktopProtocol() {
+                if (!WavesApp.isDesktop()) {
+                    return null;
+                }
+
+                const queue = new SimpleQueue({ queueLimit: 1 });
+
+                window.listenMainProcessEvent((type, url) => {
+                    const parts = utils.parseElectronUrl(url);
+                    const path = parts.path.replace(/\/$/, '') || parts.path;
+                    if (path) {
+                        const noLogin = path === '/' || WavesApp.stateTree.where({ noLogin: true }).some(item => {
+                            const url = item.get('url') || item.id;
+                            return parts.path === url;
+                        });
+                        if (noLogin) {
+                            location.hash = `#!${path}${parts.search}`;
+                        } else {
+                            queue.push(() => {
+                                location.hash = `#!${path}${parts.search}`;
+                            });
+                        }
+                    } else if (parts.hash) {
+                        queue.push(this._modalRouter.getOpenModalFromWebCallback(parts.hash));
+                    }
+                });
+
+                user.onLogin()
+                    .then(() => {
+                        if (queue.length) {
+                            setTimeout(() => {
+                                queue.list[0]();
+                            }, 1000);
+                        }
+                    });
             }
 
             _initTryDesktop() {
@@ -505,6 +521,7 @@
         'decorators',
         'waves',
         'ModalRouter',
+        'SimpleQueue',
         'whatsNew'
     ];
 

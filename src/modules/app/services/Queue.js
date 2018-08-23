@@ -7,6 +7,8 @@
      */
     const factory = function (utils) {
 
+        const { Signal } = require('ts-utils');
+
         class Queue {
 
             /**
@@ -17,7 +19,7 @@
                  * @type {{change: Signal<Array<IQueueItem>>}}
                  */
                 this.signals = utils.liteObject({
-                    change: new tsUtils.Signal()
+                    change: new Signal()
                 });
                 /**
                  * @type {number}

@@ -27,17 +27,12 @@
                  */
                 this._firstUrl = ModalRouter._getUrlData();
                 router.registerRouteHash(this._wrapClose(this._getRoutes()));
+            }
 
-                if (WavesApp.isDesktop()) {
-                    window.listenMainProcessEvent((eventType, urlString) => {
-                        user.onLogin().then(() => {
-                            const { hash } = utils.parseElectronUrl(urlString);
-                            if (hash) {
-                                this._apply(ModalRouter._getUrlData(hash.replace('#', '')));
-                            }
-                        });
-                    });
-                }
+            getOpenModalFromWebCallback(hash) {
+                return () => {
+                    this._apply(ModalRouter._getUrlData(hash.replace('#', '')));
+                };
             }
 
             initialize() {

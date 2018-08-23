@@ -42,6 +42,11 @@
                  * @private
                  */
                 this._counter = 0;
+                /**
+                 * @type {Array<Promise>}
+                 * @private
+                 */
+                this._modals = [];
 
                 state.signals.changeRouterStateStart.on((event) => {
                     if (event.defaultPrevented) {
@@ -402,16 +407,10 @@
                     target.bindToController = true;
                 }
 
-                return ModalManager._getTemplate(target)
+                return Promise.all(this._modals.map(utils.resolve))
+                    .then(() => ModalManager._getTemplate(target))
                     .then((template) => {
                         const { controller, controllerAs } = ModalManager._getController(options);
-                        const changeCounter = () => {
-                            this._counter--;
-
-                            if (options.id) {
-                                analytics.push('Modal', `Modal.Close.${WavesApp.type}`, options.id);
-                            }
-                        };
 
                         target.controller = controller;
                         target.controllerAs = controllerAs;
@@ -419,6 +418,19 @@
 
                         this._counter++;
                         const modal = $mdDialog.show(target);
+
+                        this._modals.push(modal);
+
+                        const changeCounter = () => {
+                            this._counter--;
+
+                            const index = this._modals.indexOf(modal);
+                            this._modals.splice(index, 1);
+
+                            if (options.id) {
+                                analytics.push('Modal', `Modal.Close.${WavesApp.type}`, options.id);
+                            }
+                        };
 
                         if (options.id) {
                             analytics.push('Modal', `Modal.Open.${WavesApp.type}`, options.id);
