@@ -132,7 +132,8 @@
                                 location.hash = `#!${path}${parts.search}`;
                             });
                         }
-                    } else if (parts.hash) {
+                    }
+                    if (parts.hash) {
                         queue.push(this._modalRouter.getOpenModalFromWebCallback(parts.hash));
                     }
                 });
