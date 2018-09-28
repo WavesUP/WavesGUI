@@ -1,8 +1,21 @@
-import { PROTOCOL } from './constansts'
-import { readFile, writeFile as fsWriteFile, existsSync, readdir as fsReadDir } from 'fs';
+import { PROTOCOL } from './constansts';
+import {
+    readFile,
+    copyFile,
+    writeFile as fsWriteFile,
+    existsSync,
+    readdir as fsReadDir,
+    rename as renameFs
+} from 'fs';
+import { Signal } from 'ts-utils';
+import { join } from 'path';
 
-import { BrowserWindow } from 'electron';
+export const logSignal = new Signal();
 
+export function log(...args) {
+    console.log(...args);
+    logSignal.dispatch(args);
+}
 
 export function hasProtocol(str: string): boolean {
     return str.indexOf(PROTOCOL) === 0;
@@ -76,4 +89,20 @@ export function write(path: string, content: string): Promise<void> {
 
 export function writeJSON(path: string, content: object | Array<object>): Promise<void> {
     return write(path, JSON.stringify(content));
+}
+
+export function rename(folder: string, oldName: string, newName: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        renameFs(join(folder, oldName), join(folder, newName), error => {
+            error ? reject(error) : resolve();
+        });
+    });
+}
+
+export function copy(from: string, to: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        copyFile(from, to, (error) => {
+            error ? reject(error) : resolve();
+        });
+    });
 }

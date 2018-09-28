@@ -1,20 +1,30 @@
 ///<reference path="node-global-extends.d.ts"/>
 
 
-import { app, BrowserWindow, screen, Menu } from 'electron';
+import { app, BrowserWindow, screen, Menu, protocol, dialog } from 'electron';
 import { Bridge } from './Bridge';
 import { ISize, IMetaJSON, ILastOpen } from './package';
-import { join } from 'path';
-import { hasProtocol, read, readJSON, removeProtocol, write, writeJSON, readdir, parseElectronUrl } from './utils';
+import { join, normalize } from 'path';
+import {
+    hasProtocol,
+    read,
+    readJSON,
+    removeProtocol,
+    write,
+    writeJSON,
+    readdir,
+    parseElectronUrl,
+    logSignal
+} from './utils';
 import { homedir } from 'os';
-import { execSync } from 'child_process'
+import { exec, execSync } from 'child_process';
 import { ARGV_FLAGS, PROTOCOL, MIN_SIZE, FIRST_OPEN_SIZES, META_NAME, GET_MENU_LIST } from './constansts';
-import { get } from 'https';
 
 const i18next = require(join(__dirname, 'i18next', 'commonjs', 'index.js'));
 
 import BrowserWindowConstructorOptions = Electron.BrowserWindowConstructorOptions;
-import { IPackageJSON } from "../ts-scripts/interface";
+import { IPackageJSON } from '../ts-scripts/interface';
+import { Updater } from './Updater';
 
 
 const META_PATH = join(app.getPath('userData'), META_NAME);
@@ -30,17 +40,36 @@ class Main implements IMain {
     private hasDevTools: boolean = false;
     private dataPromise: Promise<IMetaJSON>;
     private localeReadyPromise: Promise<Function>;
-    private lastLoadedVersion: string;
     private readonly pack: IPackageJSON;
     private readonly ignoreSslError: boolean;
     private readonly noReplaceDesktopFile: boolean;
-    private readonly server: string;
+    private readonly updater: Updater = new Updater({ interval: 2000 });
 
     constructor() {
         const canOpenElectron = this.makeSingleInstance();
 
+        logSignal.on(this.log, this);
+
+        this.updater.onHasUpdate.once(() => {
+            this.updater.update()
+                .then(() => {
+                    app.relaunch();
+                    app.exit(0);
+                })
+                .catch(e => {
+                    dialog.showMessageBox({
+                            type: 'warning',
+                            buttons: ['Ok'],
+                            defaultId: 0,
+                            cancelId: 0,
+                            title: 'Update Error',
+                            message: e.toString()
+                        },
+                        response => null);
+                });
+        });
+
         if (!canOpenElectron) {
-            console.log('null')
             return null;
         }
 
@@ -61,15 +90,7 @@ class Main implements IMain {
     }
 
     public reload() {
-        Main.loadVersion(this.pack).then(version => {
-            if (version === this.lastLoadedVersion) {
-                this.mainWindow.reload();
-            } else {
-                const url = this.mainWindow.webContents.getURL();
-                this.mainWindow.loadURL(url, { 'extraHeaders': 'pragma: no-cache\n' });
-                this.lastLoadedVersion = version;
-            }
-        });
+        this.mainWindow.reload();
     }
 
     public setLanguage(lng: string): void {
@@ -107,7 +128,7 @@ class Main implements IMain {
                         resolve((literal, options) => instance.t(`electron:${literal}`, options));
                     });
                 }) as Promise<Function>;
-            })
+            });
     }
 
     private makeSingleInstance(): boolean {
@@ -148,13 +169,10 @@ class Main implements IMain {
 
             const pack = this.pack;
             const parts = parseElectronUrl(removeProtocol(this.initializeUrl || argv.find(argument => hasProtocol(argument)) || ''));
-            const path = parts.path === '/' ? '/' : parts.path.replace(/\/$/, '');
-            const url = `${path}${parts.search}${parts.hash}`;
 
-            this.mainWindow.loadURL(`https://${pack.server}/#!${url}`, { 'extraHeaders': 'pragma: no-cache\n' });
-            Main.loadVersion(pack).then(version => {
-                this.lastLoadedVersion = version;
-            });
+            this.mainWindow.loadFile(`index.html`); // TODO! Check protocol open
+
+            this.log('Version updated!');
 
             this.mainWindow.on('closed', () => {
                 this.mainWindow = null;
@@ -181,11 +199,12 @@ class Main implements IMain {
         });
     }
 
-    // private log(message: string): void {
-    //     const command = `console.log('${message}');`
-    //     this.mainWindow.webContents.executeJavaScript(command);
-    //     console.log(message);
-    // }
+    private log(...message: Array<string>): void {
+        if (this.mainWindow && this.mainWindow.webContents) {
+            const command = `console.log(${message.map(i => `'${i}'`).join(',')});`;
+            this.mainWindow.webContents.executeJavaScript(command);
+        }
+    }
 
     private setHandlers() {
         if (this.ignoreSslError) {
@@ -203,11 +222,12 @@ class Main implements IMain {
         app.on('open-url', (event, url) => {
             event.preventDefault();
             this.openProtocolIn(url);
-        })
+        });
     }
 
     private onAppReady() {
-        this.registerProtocol()
+        this.registerOsProtocol()
+            .then(() => this.registerProtocol())
             .then(() => this.createWindow())
             .then(() => this.addApplicationMenu());
     }
@@ -215,13 +235,26 @@ class Main implements IMain {
     private addApplicationMenu(): Promise<void> {
         Menu.setApplicationMenu(null);
         return this.localeReadyPromise.then(t => {
-            const menuList = GET_MENU_LIST(app, t, this.hasDevTools);
+            const menuList = GET_MENU_LIST(app, t, true);
             this.menu = Menu.buildFromTemplate(menuList);
             Menu.setApplicationMenu(this.menu);
         });
     }
 
     private registerProtocol(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            protocol.unregisterProtocol('file');
+
+            protocol.registerFileProtocol('file', (request, callback) => {
+                const url = request.url.substr(7).split(/\?|#/)[0];
+                callback(normalize(`${__dirname}/${url.replace(__dirname, '')}`));
+            }, reject);
+
+            resolve();
+        });
+    }
+
+    private registerOsProtocol(): Promise<void> {
         if (this.noReplaceDesktopFile) {
             return Promise.resolve();
         }
@@ -324,27 +357,27 @@ class Main implements IMain {
         });
     }
 
-    private static loadVersion(pack: IPackageJSON): Promise<string> {
-        return new Promise<string>((resolve, reject) => {
-            get(`https://${pack.server}/package.json?${Date.now()}`, res => {
-                let data = new Buffer('');
-
-                // A chunk of data has been recieved.
-                res.on('data', (chunk: Buffer) => {
-                    data = Buffer.concat([data, chunk]);
-                });
-
-                // The whole response has been received. Print out the result.
-                res.on('end', () => {
-                    resolve(JSON.parse(data.toString()).version);
-                });
-
-                res.on('error', e => {
-                    reject(e);
-                });
-            });
-        });
-    }
+    // private static loadVersion(pack: IPackageJSON): Promise<string> {
+    //     return new Promise<string>((resolve, reject) => {
+    //         get(`https://${pack.server}/package.json?${Date.now()}`, res => {
+    //             let data = new Buffer('');
+    //
+    //             // A chunk of data has been recieved.
+    //             res.on('data', (chunk: Buffer) => {
+    //                 data = Buffer.concat([data, chunk]);
+    //             });
+    //
+    //             // The whole response has been received. Print out the result.
+    //             res.on('end', () => {
+    //                 resolve(JSON.parse(data.toString()).version);
+    //             });
+    //
+    //             res.on('error', e => {
+    //                 reject(e);
+    //             });
+    //         });
+    //     });
+    // }
 
     private static getWindowOptions(meta: IMetaJSON): BrowserWindowConstructorOptions {
         const fullscreen = meta.lastOpen && meta.lastOpen.isFullScreen;

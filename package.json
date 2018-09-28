@@ -33,7 +33,7 @@
     "@types/js-cookie": "2.1.0",
     "@types/less": "0.0.32",
     "@types/mime": "2.0.0",
-    "@types/node": "8.0.34",
+    "@types/node": "^10.11.2",
     "@types/papaparse": "4.1.33",
     "@types/serve-static": "1.7.32",
     "autoprefixer": "7.1.5",
@@ -82,6 +82,7 @@
     "electron:linux": "electron-packager ./dist/desktop/mainnet/min/ --icon=./electron/icons/icon.png --platform=linux --out=./dist/linux",
     "electron:win": "electron-packager ./dist/desktop/mainnet/min/ --icon=./electron/icons/icon.ico --platform=win32 --out=./dist/win",
     "electron:osx": "electron-packager ./dist/desktop/mainnet/min/ --icon=./electron/icons/icon.icns --platform=darwin --out=./dist/osx",
+    "electron:deb:linux": "tsc -p ./ && gulp all && cd dist/desktop/mainnet/normal/ && npm i && cd - && WAVES_CONFIGURATION=mainnet ./node_modules/.bin/build -l --config.directories.output=dist/desktop/mainnet/electron --config.directories.app=dist/desktop/mainnet/normal",
     "electron": "gulp all && npm run electron:linux && npm run electron:win && npm run electron:osx",
     "electron-debug": "gulp html-desktop-mainnet-min && node_modules/.bin/electron ./dist/desktop/electron-debug --inspect",
     "data-service": "tsc -p ./data-service && ./node_modules/.bin/browserify data-service/index.js -s ds -u ts-utils -u @waves/data-entities -u @waves/signature-generator -u @waves/signature-adapter -u ramda --no-bf -o ./data-service-dist/data-service.js"

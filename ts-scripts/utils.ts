@@ -9,9 +9,9 @@ import { compile } from 'handlebars';
 import { transform } from 'babel-core';
 import { render } from 'less';
 import { minify } from 'html-minifier';
-import { Readable, Writable } from 'stream';
-import { get, ServerResponse, IncomingMessage } from 'https';
+import { get } from 'https';
 import { MAINNET_DATA, TESTNET_DATA } from '@waves/assets-pairs-order';
+import { IncomingMessage, ServerResponse } from 'http';
 
 export const task: ITaskFunction = gulp.task.bind(gulp) as any;
 

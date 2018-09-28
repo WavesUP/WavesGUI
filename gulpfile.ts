@@ -83,6 +83,9 @@ const indexPromise = readFile(join(__dirname, 'src', 'index.hbs'), { encoding: '
             taskHash.concat.push(`concat-${taskPostfix}`);
 
             const copyDeps = ['concat-style', 'downloadLocales'];
+            if (buildName === 'desktop') {
+                copyDeps.push('load-trading-view');
+            }
 
             task(`copy-${taskPostfix}`, copyDeps, function (done) {
                     const reg = new RegExp(`(.*?\\${sep}src)`);
@@ -105,6 +108,7 @@ const indexPromise = readFile(join(__dirname, 'src', 'index.hbs'), { encoding: '
                         forCopy.push(copy(join(__dirname, 'electron', 'icons'), join(targetPath, 'img', 'icon.png')));
                         forCopy.push(copy(join(__dirname, 'electron', 'waves.desktop'), join(targetPath, 'waves.desktop')));
                         forCopy.push(copy(join(__dirname, 'node_modules', 'i18next', 'dist'), join(targetPath, 'i18next')));
+                        forCopy.push(copy(join(__dirname, 'dist', 'tmp', 'trading-view'), join(targetPath, 'trading-view')));
                     }
 
                     Promise.all([
@@ -169,14 +173,17 @@ const indexPromise = readFile(join(__dirname, 'src', 'index.hbs'), { encoding: '
 
             if (buildName === 'desktop') {
                 task(`electron-create-package-json-${taskPostfix}`, [`html-${taskPostfix}`], function (done) {
-                    const targetPackage = Object.create(null);
+                    const targetPackage: IPackageJSON = Object.create(null);
 
                     meta.electron.createPackageJSONFields.forEach((name) => {
                         targetPackage[name] = pack[name];
                     });
 
                     Object.assign(targetPackage, meta.electron.defaults);
-                    targetPackage.server = meta.electron.server;
+
+                    meta.electron.dependencies.forEach(name => {
+                        targetPackage.dependencies[name] = pack.dependencies[name]
+                    });
 
                     writeFile(join(targetPath, 'package.json'), JSON.stringify(targetPackage, null, 4))
                         .then(() => done());
@@ -203,6 +210,15 @@ const indexPromise = readFile(join(__dirname, 'src', 'index.hbs'), { encoding: '
     });
     taskHash.zip.push(`zip-${buildName}`);
 
+});
+
+task('load-trading-view', (done) => {
+    Promise.all(meta.tradingView.files.map((relativePath) => {
+        const url = `${meta.tradingView.domain}/${relativePath}`;
+        return download(url, join(__dirname, 'dist', 'tmp', 'trading-view', relativePath)).then(() => {
+            console.log(`Download "${relativePath}" done`);
+        });
+    })).then(() => done());
 });
 
 task('up-version-json', function (done) {
