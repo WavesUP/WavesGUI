@@ -59,6 +59,12 @@
                     timestamp: hash[date].timestamp,
                     date
                 }));
+                // force sort
+                this.transactions.forEach(day => {
+                    day.transactions = day.transactions.sort(function (x, y) {
+                        return y.timestamp - x.timestamp;
+                    });
+                });
             }
 
         }
