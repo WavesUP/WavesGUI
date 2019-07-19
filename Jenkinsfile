@@ -33,14 +33,14 @@ properties([
             selectedValue: 'NONE',
             sortMode: 'DESCENDING_SMART',
             type: 'PT_BRANCH')]),
-    pipelineTriggers([
-        [$class: 'GenericTrigger',
+
+    pipelineTriggers([[
+        $class: 'GenericTrigger',
         genericVariables: [[ key: 'ref', value: '$.ref' ]],
         causeString: "Triggered by GitHub Webhook",
         printContributedVariables: true,
         printPostContent: true,
-        token: 'wavesGuiGithubToken']
-    ])
+        token: 'wavesGuiGithubToken']])
 ])
 
 stage('Aborting this build'){
