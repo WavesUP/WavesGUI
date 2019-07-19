@@ -35,7 +35,7 @@ properties([
             type: 'PT_BRANCH')]),
     pipelineTriggers([[
         $class: 'GenericTrigger',
-        genericVariables: [[ key: 'branch', value: '$.ref' ]],
+        genericVariables: [[ key: 'ref', value: '$.ref' ]],
         causeString: "Triggered by GitHub Webhook",
         printContributedVariables: true,
         printPostContent: true,
