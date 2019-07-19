@@ -33,19 +33,21 @@ properties([
             selectedValue: 'NONE',
             sortMode: 'DESCENDING_SMART',
             type: 'PT_BRANCH')]),
-        pipelineTriggers([[
-            $class: 'GenericTrigger',
-            genericVariables: [[ key: 'branch', value: '$.ref', regexpFilter: 'refs/heads/', defaultValue: '' ]],
-            causeString: "Triggered by GitHub Webhook",
-            printContributedVariables: true,
-            printPostContent: true,
-            token: 'wavesGuiGithubToken' ]])
+    pipelineTriggers([[
+        $class: 'GenericTrigger',
+        genericVariables: [[ key: 'branch', value: '$.ref', regexpFilter: 'refs/heads/', defaultValue: '' ]],
+        causeString: "Triggered by GitHub Webhook",
+        printContributedVariables: true,
+        printPostContent: true,
+        token: 'wavesGuiGithubToken' ]])
 ])
 
 stage('Aborting this build'){
+
     // On the first launch pipeline doesn't have any parameters configured and must skip all the steps
     if (env.BUILD_NUMBER == '1'){
         echo "This is the first run of the pipeline! It is now should be configured and ready to go!"
+        currentBuild.result = Constants.PIPELINE_ABORTED
         return
     }
 
