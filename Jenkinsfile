@@ -32,7 +32,6 @@ pipelineTriggers([
     token: 'wavesGuiGithubToken' ]
     ])
 
-
      parameters([
         listGitBranches(
             branchFilter: 'origin/(.*)',
