@@ -42,12 +42,13 @@ properties([
             token: 'wavesGuiGithubToken' ]])
 ])
 
-
-
 stage('Aborting this build'){
     // On the first launch pipeline doesn't have any parameters configured and must skip all the steps
-    if (!binding.hasVariable('branch'))
-        branch = params.branch
+    if (env.BUILD_NUMBER == '1'){
+        echo "This is the first run of the pipeline! It is now should be configured and ready to go!"
+        return
+    }
+
     if (! branch ) {
         echo "Aborting this build. Please run it again with the required parameters specified."
         currentBuild.result = Constants.PIPELINE_ABORTED
@@ -69,7 +70,7 @@ timeout(time:20, unit:'MINUTES') {
                 currentBuild.displayName = "#${env.BUILD_NUMBER} - ${branch}"
 
                     stage('Checkout') {
-                        sh 'env'
+                        
                         step([$class: 'WsCleanup'])
                         checkout([
                             $class: 'GitSCM',
