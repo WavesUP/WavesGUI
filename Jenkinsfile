@@ -36,7 +36,7 @@ properties([
 
     pipelineTriggers([[
         $class: 'GenericTrigger',
-        genericVariables: [[ key: 'ref', value: '$.ref' ]],
+        genericVariables: [[ key: 'branch', value: '$.ref' ]],
         causeString: "Triggered by GitHub Webhook",
         printContributedVariables: true,
         printPostContent: true,
@@ -50,15 +50,16 @@ stage('Aborting this build'){
         echo "This is the first run of the pipeline! It is now should be configured and ready to go!"
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
-    }
+    } else {
 
-    if (! branch ) {
-        echo "Aborting this build. Please run it again with the required parameters specified."
-        currentBuild.result = Constants.PIPELINE_ABORTED
-        return
+        if (! branch ) {
+            echo "Aborting this build. Please run it again with the required parameters specified."
+            currentBuild.result = Constants.PIPELINE_ABORTED
+            return
+        }
+        else
+            echo "Parameters are specified. Branch: ${branch}"
     }
-    else
-        echo "Parameters are specified. Branch: ${branch}"
 }
 
 if (currentBuild.result == Constants.PIPELINE_ABORTED){
