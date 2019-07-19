@@ -21,19 +21,10 @@ def buildTasks = [:]
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
 
 properties([
-       pipelineTriggers([
-        [$class: 'GenericTrigger',
-        genericVariables: [
-            [ key: 'branch', value: '$.ref', defaultValue: 'dev' ]
-        ],
-        causeString: "Triggered by GitHub Webhook",
-        printContributedVariables: true,
-        printPostContent: true,
-        token: 'wavesGuiGithubToken' ]]),
-    parameters([
+     parameters([
         listGitBranches(
             branchFilter: 'origin/(.*)',
-            defaultValue: 'dev',
+            defaultValue: '',
             name: 'branch',
             listSize: '20',
             quickFilterEnabled: false,
@@ -42,7 +33,18 @@ properties([
             sortMode: 'DESCENDING_SMART',
             type: 'PT_BRANCH'
         )
+    ]),
+   pipelineTriggers([
+    [$class: 'GenericTrigger',
+    genericVariables: [
+        [ key: 'branch', value: '$.ref', defaultValue: '' ]
+    ],
+    causeString: "Triggered by GitHub Webhook",
+    printContributedVariables: true,
+    printPostContent: true,
+    token: 'wavesGuiGithubToken' ]
     ])
+   
 ])
 
 stage('Aborting this build'){
