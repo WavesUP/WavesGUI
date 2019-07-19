@@ -21,6 +21,16 @@ def buildTasks = [:]
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
 
 properties([
+       pipelineTriggers([
+        [$class: 'GenericTrigger',
+        genericVariables: [
+            [ key: 'branch', value: '$.ref' ]
+        ],
+        causeString: "Triggered by GitHub Webhook",
+        printContributedVariables: true,
+        printPostContent: true,
+        token: 'wavesGuiGithubToken']
+    ]),
     parameters([
         listGitBranches(
             branchFilter: 'origin/(.*)',
@@ -34,17 +44,6 @@ properties([
             sortMode: 'DESCENDING_SMART',
             type: 'PT_BRANCH'
         )
-    ]),
-
-    pipelineTriggers([
-        [$class: 'GenericTrigger',
-        genericVariables: [
-            [ key: 'branch', value: '$.ref' ]
-        ],
-        causeString: "Triggered by GitHub Webhook",
-        printContributedVariables: true,
-        printPostContent: true,
-        token: 'wavesGuiGithubToken']
     ])
 ])
 
