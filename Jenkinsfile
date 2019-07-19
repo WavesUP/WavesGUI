@@ -76,7 +76,7 @@ timeout(time:20, unit:'MINUTES') {
                 currentBuild.displayName = "#${env.BUILD_NUMBER} - ${branch}"
 
                     stage('Checkout') {
-                        
+                        sh 'env'
                         step([$class: 'WsCleanup'])
                         checkout([
                             $class: 'GitSCM',
