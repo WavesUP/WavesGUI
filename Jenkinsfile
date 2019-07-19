@@ -55,7 +55,7 @@ stage('Aborting this build'){
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
     } else {
-        if (! branch ) {
+        if (! params.branch ) {
             echo "Aborting this build. Please run it again with the required parameters specified."
             currentBuild.result = Constants.PIPELINE_ABORTED
             return
