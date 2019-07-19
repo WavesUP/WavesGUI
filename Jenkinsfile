@@ -34,10 +34,12 @@ properties([
             sortMode: 'DESCENDING_SMART',
             type: 'PT_BRANCH')]),
 
-    pipelineTriggers([[
-        $class: 'GenericTrigger',
-        genericVariables: [[ key: 'branch', value: '$.ref' ]],
-        causeString: "Triggered by GitHub Webhook",
+    pipelineTriggers([
+        [$class: 'GenericTrigger',
+        genericVariables: [
+            [ key: 'branch', value: '$.ref' ]
+        ],
+        causeString: "Triggered by GitHub Webhook $branch",
         printContributedVariables: true,
         printPostContent: true,
         token: 'wavesGuiGithubToken']])
@@ -51,7 +53,6 @@ stage('Aborting this build'){
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
     } else {
-
         if (! branch ) {
             echo "Aborting this build. Please run it again with the required parameters specified."
             currentBuild.result = Constants.PIPELINE_ABORTED
