@@ -32,7 +32,9 @@ properties([
             remoteURL: repo_url,
             selectedValue: 'NONE',
             sortMode: 'DESCENDING_SMART',
-            type: 'PT_BRANCH')]),
+            type: 'PT_BRANCH'
+        )
+    ]),
 
     pipelineTriggers([
         [$class: 'GenericTrigger',
