@@ -34,6 +34,7 @@ properties([
             type: 'PT_BRANCH'
         )
     ]),
+     
    pipelineTriggers([
     [$class: 'GenericTrigger',
     genericVariables: [
