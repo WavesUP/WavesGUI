@@ -24,7 +24,7 @@ properties([
        pipelineTriggers([
         [$class: 'GenericTrigger',
         genericVariables: [
-            [ key: 'branch', value: '$.ref', regexpFilter: 'refs/heads/', defaultValue: '' ]
+            [ key: 'branch', value: '$.ref', regexpFilter: 'refs/heads/', defaultValue: 'dev' ]
         ],
         causeString: "Triggered by GitHub Webhook",
         printContributedVariables: true,
@@ -33,8 +33,7 @@ properties([
     parameters([
         listGitBranches(
             branchFilter: 'origin/(.*)',
-            credentialsId: '',
-            defaultValue: '',
+            defaultValue: 'dev',
             name: 'branch',
             listSize: '20',
             quickFilterEnabled: false,
