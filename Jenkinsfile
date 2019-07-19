@@ -41,10 +41,11 @@ properties([
         genericVariables: [
             [ key: 'branch', value: '$.ref' ]
         ],
-        causeString: "Triggered by GitHub Webhook $branch",
+        causeString: "Triggered by GitHub Webhook",
         printContributedVariables: true,
         printPostContent: true,
-        token: 'wavesGuiGithubToken']])
+        token: 'wavesGuiGithubToken']
+    ])
 ])
 
 stage('Aborting this build'){
