@@ -82,7 +82,7 @@ timeout(time:20, unit:'MINUTES') {
                             $class: 'GitSCM',
                             branches: [[name:'master']],
                             doGenerateSubmoduleConfigurations: false,
-                            extensions: [],
+                            extensions: [[$class: 'CleanCheckout']],
                             submoduleCfg: [],
                             userRemoteConfigs: [[credentialsId: Constants.JENKINSFILES_REPO_CREDS, url: Constants.JENKINSFILES_REPO]]
                         ])
@@ -90,7 +90,7 @@ timeout(time:20, unit:'MINUTES') {
                             $class: 'GitSCM',
                             branches: [[ name: branch ]],
                             doGenerateSubmoduleConfigurations: false,
-                            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'WavesGUI']],
+                            extensions: [[$class: 'CleanCheckout'], [$class: 'RelativeTargetDirectory', relativeTargetDir: 'WavesGUI']],
                             submoduleCfg: [],
                             userRemoteConfigs: [[url: repo_url]]
                         ])
