@@ -26,7 +26,7 @@
   "origin": "https://testnet.wavesplatform.com",
   "featuresConfigUrl": "https://raw.githubusercontent.com/wavesplatform/waves-client-config/master/testnet.config.json",
   "feeConfigUrl": "https://raw.githubusercontent.com/wavesplatform/waves-client-config/master/fee.json",
-  "VSTNetworkByte": "F",
+  "VSTNetworkByte": "S",
   "tokenrating": "https://dev.voting.wavesplatform.com",
   "assets": {
     "EUR": "EqZfxiqYKkByP42hqNsvuPdXxVYMHaQDwfKgFnAz5D1x",
