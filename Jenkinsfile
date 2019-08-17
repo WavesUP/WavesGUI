@@ -28,13 +28,15 @@ def artifactsDir = 'out'
 def container_info = [:]
 buildTasks.failFast = true
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
+def deploymentFile = "./kubernetes/waves-client-stage-waveswallet-io/deployment.yaml"
+
 def pipeline_trigger_token = 'wavesGuiGithubToken'
 properties([
 
     [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '14', numToKeepStr: '30']],
 
     parameters([
-        choice(choices: ['Build', 'Build and Deploy', 'Deploy'], description: '', name: 'action'),
+        choice(choices: ['Build', 'Build and Deploy', 'Deploy', 'Deploy PROD', 'Deploy TEST'], description: '', name: 'action'),
 
         // source depends on choice parameter above and dynamically
         // loads either Git repo branches for building
@@ -58,7 +60,7 @@ properties([
                     import com.cloudbees.plugins.credentials.*
                     import com.cloudbees.plugins.credentials.domains.*
 
-                    if (binding.variables.get('action') == 'Deploy') {
+                    if (binding.variables.get('action') == 'Deploy' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
 
                         def image_name = 'waves/wallet'
                         cred_id = "${Constants.DOCKER_REGISTRY_CREDS}"
@@ -122,7 +124,10 @@ properties([
                 script: [ classpath: [], sandbox: false, script: """
                     if (binding.variables.get('action') == 'Build') {
                         return []
-                    } else {
+                    } if (binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
+                        return ['wallet', 'wallet-electron', 'both']
+                    } 
+                    else {
                         return ['wallet', 'wallet-electron']
                     }
                     """
@@ -139,7 +144,7 @@ properties([
             script: [$class: 'GroovyScript',
                 fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
                 script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build') {
+                    if (binding.variables.get('action') == 'Build' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
                         return []
                     } else {
                         return ${Constants.WAVES_WALLET_STAGE_SERVERS}
@@ -158,12 +163,29 @@ properties([
             script: [$class: 'GroovyScript',
                 fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
                 script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build') {
+                    if (binding.variables.get('action') == 'Build' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
                         return []
                     } else {
                         return ${Constants.WAVES_WALLET_NETWORKS}
                     }
                     """
+                ]
+            ]
+        ],
+        $class: 'CascadeChoiceParameter', 
+            choiceType: 'PT_SINGLE_SELECT', 
+            description: '', filterLength: 1, 
+            filterable: false, 
+            name: 'confirm', 
+            randomName: 'choice-parameter-306677463453518', 
+            referencedParameters: 'action', 
+            script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: ''], script: [classpath: [], sandbox: false, script: '''
+                    if (binding.variables.get(\'action\') == \'Deploy PROD\') {
+                        return [\'I am aware I am deploying PROD\']
+                    } else {
+                        return false
+                    }
+                    '''
                 ]
             ]
         ]
@@ -196,6 +218,9 @@ stage('Aborting this build'){
         echo "Aborting this build. Please run it again with the required parameters specified."
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
+    }
+    if (action.contains('PROD') && ! confirm){
+        echo "Aborting this build. Deploy to PROD was not confirmed."
     }
     else
         echo "Parameters are specified:\n" +
@@ -309,7 +334,7 @@ timeout(time:20, unit:'MINUTES') {
                         deployTasks["Deploying " + serviceName] = {
                             stage("Deploying " + serviceName) {
                                 if (action.contains('Deploy')) {
-                                    if (serviceName == image) {
+                                    if (image == serviceName || image =="both" ) {
                                         def waves_wallet_deployment_map = [
                                             domain_name: destination.replaceAll("\\.","-"),
                                             network: network,
@@ -317,11 +342,27 @@ timeout(time:20, unit:'MINUTES') {
                                             image: image,
                                             current_date: "'${ut.shWithOutput('date +%s')}'"
                                         ]
+                                        
                                         if (action.contains('Build')) {
                                             waves_wallet_deployment_map.tag += '.latest'
                                         }
+
+                                        else if (action.contains('PROD')) {
+                                            waves_wallet_deployment_map.tag += '.latest'
+                                            deploymentFile = "./kubernetes/waves-wallet-prod/deployment.yaml"
+                                            waves_wallet_deployment_map.domain_name = Constants.WALLET_PROD_DOMAIN_NAMES[serviceName].replaceAll("\\.","-")
+                                            waves_wallet_deployment_map.network = "mainnet"
+                                        } 
+
+                                        else if (action.contains('TEST')) {
+                                            waves_wallet_deployment_map.tag += '.latest'
+                                            deploymentFile = "./kubernetes/waves-wallet-test/deployment.yaml"
+                                            waves_wallet_deployment_map.domain_name = Constants.WALLET_TEST_DOMAIN_NAMES[serviceName].replaceAll("\\.","-")
+                                            waves_wallet_deployment_map.network = "testnet"
+                                        }
+
                                         // configure deployment template
-                                        String deploymentConfFileContent = ut.replaceTemplateVars('./kubernetes/waves-client-stage-waveswallet-io/deployment.yaml', waves_wallet_deployment_map)
+                                        String deploymentConfFileContent = ut.replaceTemplateVars(deploymentFile, waves_wallet_deployment_map)
                                         def deployment_config = "./${artifactsDir}/${image}-deployment.yaml"
                                         writeFile file: "./${artifactsDir}/${image}-deployment.yaml", text: deploymentConfFileContent
 
