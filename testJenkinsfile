@@ -1,0 +1,88 @@
+#!/usr/bin/env groovy
+
+@Library('jenkins-shared-lib')
+import devops.waves.*
+ut = new utils()
+def buildTasks = [:]
+def repo_url = 'https://github.com/wavesplatform/Waves.git'
+
+
+properties([
+    parameters([
+        gitParameter(
+            branch: '',
+            branchFilter: 'origin/(.*)',
+            defaultValue: 'no values in a list or failed to retrieve it', description: '',
+            name: 'branch',
+            quickFilterEnabled: false,
+            selectedValue: 'NONE',
+            sortMode: 'ASCENDING_SMART',
+            tagFilter: '*',
+            type: 'PT_BRANCH',
+            useRepository: repo_url
+        )
+    ])
+])
+
+stage('Aborting this build'){
+    // On the first launch pipeline doesn't have any parameters configured and must skip all the steps
+    if (env.BUILD_NUMBER == '1'){
+        echo "This is the first run of the pipeline! It is now should be configured and ready to go!"
+        currentBuild.result = Constants.PIPELINE_ABORTED
+        return
+    }
+    if (! params.branch ) {
+        echo "Aborting this build. Please run it again with the required parameters specified."
+        currentBuild.result = Constants.PIPELINE_ABORTED
+        return
+    }
+    else
+        echo "Parameters are specified. Branch: ${branch}"
+}
+
+if (currentBuild.result == Constants.PIPELINE_ABORTED){
+    return
+}
+
+timeout(time:20, unit:'MINUTES') {
+    node('buildagent'){
+        currentBuild.result = Constants.PIPELINE_SUCCESS
+        timestamps {
+            try {
+                currentBuild.displayName = "#${env.BUILD_NUMBER} - ${branch}"
+
+                 build job: 'Build and Deploy WavesWallet Web Client Stage', parameters: [[$class: 'StringParameterValue', name: 'action', value: Build], [$class: 'StringParameterValue', name: 'source', value: addStageNetwork]]
+
+                    stage('Checkout') {
+                        sh 'env'
+                        step([$class: 'WsCleanup'])
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[ name: branch ]],
+                            doGenerateSubmoduleConfigurations: false,
+                            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'WavesGUI']],
+                            submoduleCfg: [],
+                            userRemoteConfigs: [[url: repo_url]]
+                        ])
+                    }
+
+            }
+            catch (err) {
+                currentBuild.result = Constants.PIPELINE_FAILURE
+                println("ERROR caught")
+                println(err)
+                println(err.getMessage())
+                println(err.getStackTrace())
+                println(err.getCause())
+                println(err.getLocalizedMessage())
+                println(err.toString())
+             }
+            finally{
+                // ut.notifySlack("docker_builds",
+                //     currentBuild.result,
+                //     "Built images:\n${Constants.DOCKER_REGISTRY_ADDRESS - 'https://'}/waves/wallet:${branch}-build${env.BUILD_NUMBER}" +
+                //     "\n${Constants.DOCKER_REGISTRY_ADDRESS - 'https://'}/waves/wallet-electron:${branch}-build${env.BUILD_NUMBER}")
+            }
+        }
+    }
+}
