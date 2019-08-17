@@ -172,7 +172,7 @@ properties([
                 ]
             ]
         ],
-        $class: 'CascadeChoiceParameter', 
+        [$class: 'CascadeChoiceParameter', 
             choiceType: 'PT_SINGLE_SELECT', 
             description: '', filterLength: 1, 
             filterable: false, 
@@ -342,7 +342,7 @@ timeout(time:20, unit:'MINUTES') {
                                             image: image,
                                             current_date: "'${ut.shWithOutput('date +%s')}'"
                                         ]
-                                        
+
                                         if (action.contains('Build')) {
                                             waves_wallet_deployment_map.tag += '.latest'
                                         }
