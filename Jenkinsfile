@@ -60,7 +60,7 @@ properties([
                     import com.cloudbees.plugins.credentials.*
                     import com.cloudbees.plugins.credentials.domains.*
 
-                    if (binding.variables.get('action') == 'Deploy' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
+                    if (binding.variables.get('action') == 'Deploy' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST') {
 
                         def image_name = 'waves/wallet'
                         cred_id = "${Constants.DOCKER_REGISTRY_CREDS}"
@@ -124,7 +124,7 @@ properties([
                 script: [ classpath: [], sandbox: false, script: """
                     if (binding.variables.get('action') == 'Build') {
                         return []
-                    } if (binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
+                    } else if (binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST') {
                         return ['wallet', 'wallet-electron', 'both']
                     } 
                     else {
@@ -144,7 +144,7 @@ properties([
             script: [$class: 'GroovyScript',
                 fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
                 script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
+                    if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST') {
                         return []
                     } else {
                         return ${Constants.WAVES_WALLET_STAGE_SERVERS}
@@ -163,7 +163,7 @@ properties([
             script: [$class: 'GroovyScript',
                 fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
                 script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build' || binding.variables.get('pipeline') == 'Deploy PROD' || binding.variables.get('pipeline') == 'Deploy TEST') {
+                    if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST') {
                         return []
                     } else {
                         return ${Constants.WAVES_WALLET_NETWORKS}
@@ -180,9 +180,13 @@ properties([
             randomName: 'choice-parameter-306677463453518', 
             referencedParameters: 'action', 
             script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: ''], script: [classpath: [], sandbox: false, script: '''
-                    if (binding.variables.get(\'action\') == \'Deploy PROD\') {
-                        return [\'I am aware I am deploying PROD\']
-                    } else {
+                    if (binding.variables.get('action') == 'Deploy PROD') {
+                        return ['I am aware I am deploying PROD']
+                    } 
+                    else if (binding.variables.get('action') == 'Deploy TEST') {
+                        return ['I am aware I am deploying TEST']
+                    } 
+                    else{
                         return false
                     }
                     '''
@@ -219,8 +223,10 @@ stage('Aborting this build'){
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
     }
-    if (action.contains('PROD') && ! confirm){
+    if (( action.contains('PROD') || action.contains('TEST')) && ! confirm){
         echo "Aborting this build. Deploy to PROD was not confirmed."
+        currentBuild.result = Constants.PIPELINE_ABORTED
+        return
     }
     else
         echo "Parameters are specified:\n" +
