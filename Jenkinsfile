@@ -173,7 +173,7 @@ properties([
             ]
         ],
         [$class: 'CascadeChoiceParameter', 
-            choiceType: 'PT_SINGLE_SELECT', 
+            choiceType: 'PT_CHECKBOX', 
             description: '', filterLength: 1, 
             filterable: false, 
             name: 'confirm', 
