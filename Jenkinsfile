@@ -353,15 +353,13 @@ timeout(time:20, unit:'MINUTES') {
                                             waves_wallet_deployment_map.tag += '.latest'
                                         }
 
-                                        else if (action.contains('PROD')) {
-                                            waves_wallet_deployment_map.tag += '.latest'
+                                        if (action.contains('PROD')) {
                                             deploymentFile = "./kubernetes/waves-wallet-prod/deployment.yaml"
                                             waves_wallet_deployment_map.domain_name = Constants.WALLET_PROD_DOMAIN_NAMES[serviceName].replaceAll("\\.","-")
                                             waves_wallet_deployment_map.network = "mainnet"
                                         } 
 
-                                        else if (action.contains('TEST')) {
-                                            waves_wallet_deployment_map.tag += '.latest'
+                                        if (action.contains('TEST')) {
                                             deploymentFile = "./kubernetes/waves-wallet-test/deployment.yaml"
                                             waves_wallet_deployment_map.domain_name = Constants.WALLET_TEST_DOMAIN_NAMES[serviceName].replaceAll("\\.","-")
                                             waves_wallet_deployment_map.network = "testnet"
