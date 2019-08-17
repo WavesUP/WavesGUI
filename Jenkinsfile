@@ -345,7 +345,7 @@ timeout(time:20, unit:'MINUTES') {
                                             domain_name: destination.replaceAll("\\.","-"),
                                             network: network,
                                             tag: source,
-                                            image: image,
+                                            image: serviceName,
                                             current_date: "'${ut.shWithOutput('date +%s')}'"
                                         ]
 
@@ -367,19 +367,19 @@ timeout(time:20, unit:'MINUTES') {
 
                                         // configure deployment template
                                         String deploymentConfFileContent = ut.replaceTemplateVars(deploymentFile, waves_wallet_deployment_map)
-                                        def deployment_config = "./${artifactsDir}/${image}-deployment.yaml"
-                                        writeFile file: "./${artifactsDir}/${image}-deployment.yaml", text: deploymentConfFileContent
+                                        def deployment_config = "./${artifactsDir}/${serviceName}-deployment.yaml"
+                                        writeFile file: "./${artifactsDir}/${serviceName}/${serviceName}-deployment.yaml", text: deploymentConfFileContent
 
                                         // deploy container to kuber
                                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: Constants.AWS_KUBERNETES_KEY, secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                                             sh """
                                                 docker run -i --rm \
-                                                    -v "${env.WORKSPACE}/${artifactsDir}":/root/app \
+                                                    -v "${env.WORKSPACE}/${artifactsDir}/${serviceName}":/root/app \
                                                     -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
                                                     -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
                                                     -e KUBE_CLUSTER_NAME="${Constants.AWS_KUBERNETES_KUBE_CLUSTER_NAME}" \
                                                     -e AWS_REGION="${Constants.AWS_KUBERNETES_AWS_REGION}" \
-                                                    -e CONFIG_PATH="${image}-deployment.yaml" \
+                                                    -e CONFIG_PATH="${serviceName}-deployment.yaml" \
                                                     "${Constants.DOCKER_KUBERNETES_EXECUTOR_IMAGE}"
                                                 """
                                         }
