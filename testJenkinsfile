@@ -4,7 +4,7 @@
 import devops.waves.*
 ut = new utils()
 def buildTasks = [:]
-def repo_url = 'https://github.com/wavesplatform/Waves.git'
+def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
 
 
 properties([
