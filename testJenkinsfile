@@ -52,7 +52,7 @@ timeout(time:20, unit:'MINUTES') {
             try {
                 currentBuild.displayName = "#${env.BUILD_NUMBER} - ${branch}"
 
-                 build job: 'Build and Deploy WavesWallet Web Client Stage', parameters: [[$class: 'StringParameterValue', name: 'action', value: "Build"], [$class: 'StringParameterValue', name: 'source', value: "addStageNetwork"]]
+                 build job: 'Waves/Build and Deploy WavesWallet Web Client Stage', parameters: [[$class: 'StringParameterValue', name: 'action', value: "Build"], [$class: 'StringParameterValue', name: 'source', value: "addStageNetwork"]]
 
                     stage('Checkout') {
                         sh 'env'
