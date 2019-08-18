@@ -34,7 +34,7 @@ properties([
 		type: 'PT_RADIO',
 		visibleItemCount: 3
 	),
-        choice(choices: ['chrome', 'firefox'], name: 'browser')
+        choice(choices: ['chrome', 'firefox'], name: 'browser', description: '')
     ])
 ])
 
