@@ -8,6 +8,19 @@ def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
 def networkServerMap = [:]
 properties([
 	parameters([
+        gitParameter(
+            branch: '',
+            branchFilter: 'origin/(.*)',
+            defaultValue: 'no values in a list or failed to retrieve it', description: '',
+            name: 'branch',
+            quickFilterEnabled: false,
+            selectedValue: 'NONE',
+            sortMode: 'ASCENDING_SMART',
+            tagFilter: '*',
+            type: 'PT_BRANCH',
+            listSize: '15',
+            useRepository: repo_url
+        ),
 	extendedChoice(bindings: '',
 		defaultValue: 'stage1.waveswallet.io',
 		groovyScript: '''
