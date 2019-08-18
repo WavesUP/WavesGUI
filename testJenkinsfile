@@ -3,9 +3,8 @@
 @Library('jenkins-shared-lib')
 import devops.waves.*
 ut = new utils()
-def buildTasks = [:]
+def deployTasks = [:]
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
-
 
 properties([
     parameters([
@@ -21,7 +20,10 @@ properties([
             type: 'PT_BRANCH',
             listSize: '15',
             useRepository: repo_url
-        )
+        ),
+        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'first_server')]
+        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'second_server')]
+        [choice(choices: ['chrome', 'firefox'], description: '', name: 'browser')]
     ])
 ])
 
@@ -38,7 +40,10 @@ stage('Aborting this build'){
         return
     }
     else
-        echo "Parameters are specified. Branch: ${branch}"
+        echo "Parameters are specified. Branch: ${branch}\n" +
+        	"first_server: ${first_server}\n" +
+        	"second_server: ${second_server}\n" +
+        def networkServerMap = [first_server: "mainnet", second_server: "testnet"]
 }
 
 if (currentBuild.result == Constants.PIPELINE_ABORTED){
@@ -52,21 +57,41 @@ timeout(time:20, unit:'MINUTES') {
             try {
                 currentBuild.displayName = "#${env.BUILD_NUMBER} - ${branch}"
 
-                 build job: 'Waves/Build and Deploy WavesWallet Web Client Stage', parameters: [[$class: 'StringParameterValue', name: 'action', value: "Build"], [$class: 'StringParameterValue', name: 'source', value: "addStageNetwork"]]
+                stage('Build image') {
+	                 build job: 'Waves/Build and Deploy WavesWallet Web Client Stage', 
+	                 parameters: [
+	                 	[$class: 'StringParameterValue', name: 'action', value: "Build"], 
+	                 	[$class: 'StringParameterValue', name: 'source', value: "${branch}"],
+	                 	[$class: 'StringParameterValue', name: 'image', value: ""],
+	                 	[$class: 'StringParameterValue', name: 'destination', value: ""],
+	                 	[$class: 'StringParameterValue', name: 'network', value: ""]
+	                 ]
+	            }
 
-                    stage('Checkout') {
-                        sh 'env'
-                        step([$class: 'WsCleanup'])
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[ name: branch ]],
-                            doGenerateSubmoduleConfigurations: false,
-                            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'WavesGUI']],
-                            submoduleCfg: [],
-                            userRemoteConfigs: [[url: repo_url]]
-                        ])
-                    }
+	            stage("Deploy images") {
+	            	["${first_server}","${second_server}"].each { serverName ->
+	            		deployTasks["Deploying " + serverName] = {
+	            			build job: 'Waves/Build and Deploy WavesWallet Web Client Stage', 
+			                parameters: [
+			                 	[$class: 'StringParameterValue', name: 'action', value: "Deploy"], 
+			                 	[$class: 'StringParameterValue', name: 'source', value: "${branch}.latest"],
+			                 	[$class: 'StringParameterValue', name: 'image', value: "wallet"],
+			                 	[$class: 'StringParameterValue', name: 'destination', value: "${serverName}"],
+			                 	[$class: 'StringParameterValue', name: 'network', value: "${networkServerMap[serverName]}"]
+			                 ]
+	            		}
+	            	}
+	            }
+	            parallel deployTasks
 
+	            stage("Run tests") {
+	            	build job: 'Waves_GUI_autotests/Waves wavesgui tests', 
+	            	parameters:[
+		            	[$class: 'StringParameterValue', name: 'mainnet_url', value: "${first_server}"], 
+		            	[$class: 'StringParameterValue', name: 'testnet_url', value: "${second_server}"], 
+		            	[$class: 'StringParameterValue', name: 'browser', value: "${browser}"]
+		            ]
+	            }
             }
             catch (err) {
                 currentBuild.result = Constants.PIPELINE_FAILURE
@@ -79,10 +104,7 @@ timeout(time:20, unit:'MINUTES') {
                 println(err.toString())
              }
             finally{
-                // ut.notifySlack("docker_builds",
-                //     currentBuild.result,
-                //     "Built images:\n${Constants.DOCKER_REGISTRY_ADDRESS - 'https://'}/waves/wallet:${branch}-build${env.BUILD_NUMBER}" +
-                //     "\n${Constants.DOCKER_REGISTRY_ADDRESS - 'https://'}/waves/wallet-electron:${branch}-build${env.BUILD_NUMBER}")
+                ut.notifySlack("mtuktarov-test", currentBuild.result)
             }
         }
     }
