@@ -5,7 +5,7 @@ import devops.waves.*
 ut = new utils()
 def deployTasks = [:]
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
-def networkServerMap
+def networkServerMap = [:]
 properties([
     parameters([
         gitParameter(
@@ -43,7 +43,7 @@ stage('Aborting this build'){
         echo "Parameters are specified. Branch: ${branch}\n" +
         	"first_server: ${first_server}\n" +
         	"second_server: ${second_server}\n" +
-        networkServerMap = ["first_server": "mainnet", "second_server": "testnet"]
+        networkServerMap = [first_server: "mainnet", second_server: "testnet"]
 }
 
 if (currentBuild.result == Constants.PIPELINE_ABORTED){
