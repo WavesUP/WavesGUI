@@ -21,8 +21,8 @@ properties([
             listSize: '15',
             useRepository: repo_url
         ),
-        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'first_server')]
-        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'second_server')]
+        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'first_server')],
+        [choice(choices: ['stage.waveswallet.io', 'stage1.waveswallet.io', 'stage2.waveswallet.io', 'stage3.waveswallet.io', 'stage4.waveswallet.io'], description: '', name: 'second_server')],
         [choice(choices: ['chrome', 'firefox'], description: '', name: 'browser')]
     ])
 ])
@@ -38,6 +38,11 @@ stage('Aborting this build'){
         echo "Aborting this build. Please run it again with the required parameters specified."
         currentBuild.result = Constants.PIPELINE_ABORTED
         return
+    }
+    if (first_server == second_server){
+    	echo "Aborting this build. Please cpedify different servers for deployment."
+        currentBuild.result = Constants.PIPELINE_ABORTED
+        return	
     }
     else
         echo "Parameters are specified. Branch: ${branch}\n" +
