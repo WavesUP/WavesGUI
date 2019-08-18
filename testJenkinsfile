@@ -42,7 +42,7 @@ stage('Aborting this build'){
     else
         echo "Parameters are specified. Branch: ${branch}\n" +
         	"first_server: ${first_server}\n" +
-        	"second_server: ${second_server}\n" +
+        	"second_server: ${second_server}\n"
         networkServerMap = [first_server: "mainnet", second_server: "testnet"]
 }
 
