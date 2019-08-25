@@ -1,7 +1,7 @@
 FROM node:lts-alpine as trading-view-${jenkins_platform}
 ARG trading_view_token
 WORKDIR /root
-RUN echo "//registry.npmjs.org/:_authToken=${trading_view_token}" > /root/.npmrc && \
+RUN echo "//registry.npmjs.org/:_authToken=\${trading_view_token}" > /root/.npmrc && \
     npm i @waves/trading-view
 
 FROM node:lts-alpine as static-${jenkins_platform}

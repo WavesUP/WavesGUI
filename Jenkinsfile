@@ -147,8 +147,7 @@ timeout(time:20, unit:'MINUTES') {
                                         writeFile file: './nginx/default.conf', text: nginxConfFileContent
 
                                         // configure Dockerfile template
-                                        def waves_wallet_dockerfile_map = Constants.WAVES_WALLET_DOCKERFILE_MAP.clone()
-                                        waves_wallet_dockerfile_map.jenkins_platform = "${platform}"
+                                        def waves_wallet_dockerfile_map[jenkins_platform: "${platform}"]
                                         String dockerfileConfFileContent = ut.replaceTemplateVars('./Dockerfile_template', waves_wallet_dockerfile_map)
                                         writeFile file: './Dockerfile', text: dockerfileConfFileContent
 
@@ -213,7 +212,7 @@ timeout(time:20, unit:'MINUTES') {
 
                                         // deploy container to kuber
                                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: Constants.AWS_KUBERNETES_KEY, secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                                            sh """
+                                            println """
                                                 docker run -i --rm \
                                                     -v "${env.WORKSPACE}/${artifactsDir}/${serviceName}":/root/app \
                                                     -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
