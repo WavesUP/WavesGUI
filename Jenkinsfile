@@ -176,7 +176,7 @@ timeout(time:20, unit:'MINUTES') {
 
                                         pipeline_status["built-${serviceName}"] = true
 
-                                        ut.notifySlack("mtauktarov-test",
+                                        ut.notifySlack("mtuktarov-test",
                                             currentBuild.result,
                                             "Built image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}")
                                     }
@@ -229,7 +229,7 @@ timeout(time:20, unit:'MINUTES') {
                                                 """
                                         }
                                         pipeline_status["deployed-${serviceName}"] = true
-                                        ut.notifySlack("mtauktarov-test",
+                                        ut.notifySlack("mtuktarov-test",
                                             currentBuild.result,
                                             "Deployed image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source} ${network} to ${destination}")
 
@@ -259,13 +259,13 @@ timeout(time:20, unit:'MINUTES') {
                 finally{
                     ['wallet', 'wallet-electron'].each{ serviceName ->
                         if (pipeline_tasks['build'] && ! pipeline_status["built-${serviceName}"])
-                            ut.notifySlack("mtauktarov-test",
+                            ut.notifySlack("mtuktarov-test",
                                 currentBuild.result,
                                 "Failed to build image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}")
 
                         if (pipeline_tasks['deploy'] && !pipeline_status["deployed-${serviceName}"])
                         if (image == serviceName || image =="both" ) {
-                            ut.notifySlack("mtauktarov-test",
+                            ut.notifySlack("mtuktarov-test",
                                     currentBuild.result,
                                     "Failed to deploy image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source} ${network} to ${destination}")
                         }
