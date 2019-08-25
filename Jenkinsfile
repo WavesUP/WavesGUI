@@ -132,6 +132,7 @@ timeout(time:20, unit:'MINUTES') {
                                 ut.checkoutRelative('master', Constants.KUBERNETES_REPO, 'kubernetes', Constants.KUBERNETES_REPO_CREDS)
                             }
                             sh "mkdir ${artifactsDir}"
+                            source += '.latest'
                         }
 
                     ['wallet', 'wallet-electron'].each{ serviceName ->
@@ -141,7 +142,7 @@ timeout(time:20, unit:'MINUTES') {
                                     pipeline_status["built-${serviceName}"] = false
                                     if (action.contains('Build')) {
                                         def platform = (serviceName == 'wallet') ? 'web' : 'desktop'
-                                        source += '.latest'
+                                        
                                         // configure nginx template
                                         def waves_wallet_nginx_map = Constants.WAVES_WALLET_NGINX_MAP.clone()
                                         waves_wallet_nginx_map.nginx_platform = "${platform}"
@@ -172,11 +173,10 @@ timeout(time:20, unit:'MINUTES') {
 
                                         // run build
                                         ut.buildDockerImage('waves/' + serviceName, source.split("\\.")[0], "--build-arg trading_view_token=${Constants.WAVES_WALLET_TRADING_VIEW_TOKEN} --build-arg platform=${platform}")
-                                        if (serviceName == 'wallet')
-                                            sh "false"
+
                                         pipeline_status["built-${serviceName}"] = true
 
-                                        ut.notifySlack("mtuktarov-test",
+                                        ut.notifySlack("mtauktarov-test",
                                             currentBuild.result,
                                             "Built image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}")
                                     }
@@ -229,7 +229,7 @@ timeout(time:20, unit:'MINUTES') {
                                                 """
                                         }
                                         pipeline_status["deployed-${serviceName}"] = true
-                                        ut.notifySlack("mtuktarov-test",
+                                        ut.notifySlack("mtauktarov-test",
                                             currentBuild.result,
                                             "Deployed image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source} ${network} to ${destination}")
 
@@ -259,13 +259,13 @@ timeout(time:20, unit:'MINUTES') {
                 finally{
                     ['wallet', 'wallet-electron'].each{ serviceName ->
                         if (pipeline_tasks['build'] && ! pipeline_status["built-${serviceName}"])
-                            ut.notifySlack("mtuktarov-test",
+                            ut.notifySlack("mtauktarov-test",
                                 currentBuild.result,
                                 "Failed to build image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}")
 
-                        if (pipeline_tasks['deploy'] && ! pipeline_status['deployed'])
+                        if (pipeline_tasks['deploy'] && !pipeline_status["deployed-${serviceName}"])
                         if (image == serviceName || image =="both" ) {
-                            ut.notifySlack("mtuktarov-test",
+                            ut.notifySlack("mtauktarov-test",
                                     currentBuild.result,
                                     "Failed to deploy image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source} ${network} to ${destination}")
                         }
