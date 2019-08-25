@@ -150,7 +150,7 @@ timeout(time:20, unit:'MINUTES') {
                                         writeFile file: './nginx/default.conf', text: nginxConfFileContent
 
                                         // configure Dockerfile template
-                                        def waves_wallet_dockerfile_map = [jenkins_platform: platform]
+                                        def waves_wallet_dockerfile_map = [jenkins_platform: platform, trading_view_token: '$trading_view_token']
                                         String dockerfileConfFileContent = ut.replaceTemplateVars('./Dockerfile_template', waves_wallet_dockerfile_map)
                                         writeFile file: './Dockerfile', text: dockerfileConfFileContent
 
