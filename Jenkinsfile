@@ -60,7 +60,7 @@ properties([
                 ut.cascadeChoiceParameterObject('image', scripts.getImages(), 'action'),
 
                 // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
-                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.VORDEX_WALLET_STAGE_SERVERS), 'action'),
+                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.VORDEX_WALLET_STAGE_SERVERS, true), 'action'),
                 
                 // confirm is an extra check before we deploy to prod
                 ut.cascadeChoiceParameterObject('confirm', scripts.getConfirms(), 'action', 'PARAMETER_TYPE_CHECK_BOX'),
