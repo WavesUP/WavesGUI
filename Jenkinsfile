@@ -22,6 +22,7 @@ Note: this pipeline uses a private repository as well as private shared library 
 @Library('jenkins-shared-lib')
 import devops.waves.*
 ut = new utils()
+scripts = new scripts()
 def buildTasks = [:]
 def deployTasks = [:]
 def artifactsDir = 'out'
@@ -29,11 +30,13 @@ def container_info = [:]
 buildTasks.failFast = true
 def repo_url = 'https://github.com/wavesplatform/WavesGUI.git'
 def deploymentFile = "./kubernetes/waves-wallet-stage-io/deployment.yaml"
-
+def pipeline_tasks = ['build': false, 'deploy': false]
+def pipeline_status = ['built': false, 'deployed': false]
 def pipeline_trigger_token = 'wavesGuiGithubToken'
+
 properties([
 
-    [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '14', numToKeepStr: '30']],
+    ut.buildDiscarderPropertyObject('14', '30'),
 
     parameters([
         choice(choices: ['Build', 'Build and Deploy', 'Deploy', 'Deploy PROD', 'Deploy TEST', 'Deploy STAGE'], description: '', name: 'action'),
@@ -41,162 +44,184 @@ properties([
         // source depends on choice parameter above and dynamically
         // loads either Git repo branches for building
         // or Docker Registry tags for deploy
-        [$class: 'CascadeChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: '', filterLength: 1,
-            filterable: true,
-            name: 'source',
-            randomName: 'choice-parameter-6919304534316082',
-            referencedParameters: 'action',
-            script: [$class: 'GroovyScript',
-                fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem fetching the artifacts..."]'],
-                script: [ classpath: [], sandbox: false, script: """
-                    import jenkins.model.Jenkins
-                    import groovy.json.JsonSlurper
-                    import com.cloudbees.hudson.plugins.folder.properties.FolderCredentialsProvider.FolderCredentialsProperty
-                    import com.cloudbees.hudson.plugins.folder.AbstractFolder
-                    import com.cloudbees.hudson.plugins.folder.Folder
-                    import com.cloudbees.plugins.credentials.impl.*
-                    import com.cloudbees.plugins.credentials.*
-                    import com.cloudbees.plugins.credentials.domains.*
 
-                    if (binding.variables.get('action') == 'Deploy' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
+        parameters([
+                // action - choose if you want to deploy or build or both
+                ut.choiceParameterObject('action', scripts.getActions()),
 
-                        def image_name = 'waves/wallet'
-                        cred_id = "${Constants.DOCKER_REGISTRY_CREDS}"
+                // source depends on choice parameter above and dynamically
+                // loads either Git repo branches for building or Docker Registry tags for deploy
+                ut.cascadeChoiceParameterObject('source', scripts.getBranchesOrTags('vordex/wallet', 'Vordex', repoUrlWithCreds), 'action', 'PARAMETER_TYPE_SINGLE_SELECT', true),
+                
+                // network is either mainnet, testnet or stagenet - depends on choice parameter above and used if deploying is specified.
+                ut.cascadeChoiceParameterObject('network', scripts.getNetworks(), 'action'),
+                
+                // image to deploy from - depends on choice parameter above and used if deploying is specified.
+                ut.cascadeChoiceParameterObject('image', scripts.getImages(), 'action'),
+                
+                // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
+                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.VORDEX_PROD_DOMAIN_NAMES, Constants.VORDEX_WALLET_STAGE_SERVERS), 'action'),
+                
+                // confirm is an extra check before we deploy to prod
+                ut.cascadeChoiceParameterObject('confirm', scripts.getConfirms(), 'action', 'PARAMETER_TYPE_CHECK_BOX'),
+            ]),
 
-                        def authString = ""
-                        def credentials_store =
-                        Jenkins.instance.getAllItems(Folder.class)
-                            .findAll{it.name.equals('Waves')}
-                            .each{
-                                AbstractFolder<?> folderAbs = AbstractFolder.class.cast(it)
-                                FolderCredentialsProperty property = folderAbs.getProperties().get(FolderCredentialsProperty.class)
-                                if(property != null){
-                                    for (cred in property.getCredentials()){
-                                        if ( cred.id == cred_id ) {
-                                            authString  = "\${cred.username}:\${cred.password}"
-                                        }
-                                    }
-                                }
-                            }
+    //     [$class: 'CascadeChoiceParameter',
+    //         choiceType: 'PT_SINGLE_SELECT',
+    //         description: '', filterLength: 1,
+    //         filterable: true,
+    //         name: 'source',
+    //         randomName: 'choice-parameter-6919304534316082',
+    //         referencedParameters: 'action',
+    //         script: [$class: 'GroovyScript',
+    //             fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem fetching the artifacts..."]'],
+    //             script: [ classpath: [], sandbox: false, script: """
+    //                 import jenkins.model.Jenkins
+    //                 import groovy.json.JsonSlurper
+    //                 import com.cloudbees.hudson.plugins.folder.properties.FolderCredentialsProvider.FolderCredentialsProperty
+    //                 import com.cloudbees.hudson.plugins.folder.AbstractFolder
+    //                 import com.cloudbees.hudson.plugins.folder.Folder
+    //                 import com.cloudbees.plugins.credentials.impl.*
+    //                 import com.cloudbees.plugins.credentials.*
+    //                 import com.cloudbees.plugins.credentials.domains.*
 
-                        def response = ["curl", "-u", "\${authString}", "-k", "-X", "GET", "${Constants.DOCKER_REGISTRY_ADDRESS}/api/repositories/\${image_name}/tags"].execute().text.replaceAll("\\r\\n", "")
-                        def data = new groovy.json.JsonSlurperClassic().parseText(response)
+    //                 if (binding.variables.get('action') == 'Deploy' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
 
-                        def tags_by_date = [:]
-                        def timestamps = []
-                        def sorted_tags = []
+    //                     def image_name = 'waves/wallet'
+    //                     cred_id = "${Constants.DOCKER_REGISTRY_CREDS}"
 
-                        data.each{
-                            if (it.name.contains('latest')){
-                                tags_by_date[it.created] = it.name
-                                timestamps.push(it.created)
-                            }
-                        }
+    //                     def authString = ""
+    //                     def credentials_store =
+    //                     Jenkins.instance.getAllItems(Folder.class)
+    //                         .findAll{it.name.equals('Waves')}
+    //                         .each{
+    //                             AbstractFolder<?> folderAbs = AbstractFolder.class.cast(it)
+    //                             FolderCredentialsProperty property = folderAbs.getProperties().get(FolderCredentialsProperty.class)
+    //                             if(property != null){
+    //                                 for (cred in property.getCredentials()){
+    //                                     if ( cred.id == cred_id ) {
+    //                                         authString  = "\${cred.username}:\${cred.password}"
+    //                                     }
+    //                                 }
+    //                             }
+    //                         }
 
-                        timestamps = timestamps.sort().reverse()
+    //                     def response = ["curl", "-u", "\${authString}", "-k", "-X", "GET", "${Constants.DOCKER_REGISTRY_ADDRESS}/api/repositories/\${image_name}/tags"].execute().text.replaceAll("\\r\\n", "")
+    //                     def data = new groovy.json.JsonSlurperClassic().parseText(response)
 
-                        for(timestamp in timestamps){
-                            sorted_tags.push(tags_by_date[timestamp])
-                        }
-                        return sorted_tags
-                    } else {
-                        def gettags = ("git ls-remote -t -h ${repo_url}").execute()
+    //                     def tags_by_date = [:]
+    //                     def timestamps = []
+    //                     def sorted_tags = []
 
-                        return gettags.text.readLines().collect {
-                            it.split()[1].replaceAll(\'refs/heads/\', \'\').replaceAll(\'refs/tags/\', \'\').replaceAll("\\\\^\\\\{\\\\}", \'\')
-                        }
-                    }
-                    """
-                ]
-            ]
-        ],
-        // image to deploy from - depends on choice parameter above and used if deploying is specified.
-        [$class: 'CascadeChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: '', filterLength: 1,
-            name: 'image',
-            randomName: 'choice-parameter-69159083423764582',
-            referencedParameters: 'action',
-            script: [$class: 'GroovyScript',
-                fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
-                script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build') {
-                        return []
-                    } else if (binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
-                        return ['wallet', 'wallet-electron', 'both']
-                    }
-                    else {
-                        return ['wallet', 'wallet-electron']
-                    }
-                    """
-                ]
-            ]
-        ],
-        // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
-        [$class: 'CascadeChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: '', filterLength: 1,
-            name: 'destination',
-            randomName: 'choice-parameter-69324734886082',
-            referencedParameters: 'action',
-            script: [$class: 'GroovyScript',
-                fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
-                script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
-                        return []
-                    } else {
-                        return ${Constants.WAVES_WALLET_STAGE_SERVERS}
-                    }
-                    """
-                ]
-            ]
-        ],
-        // network is either mainnet or testnet - depends on choice parameter above and used if deploying is specified.
-        [$class: 'CascadeChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: '', filterLength: 1,
-            name: 'network',
-            randomName: 'choice-parameter-6919234234886082',
-            referencedParameters: 'action',
-            script: [$class: 'GroovyScript',
-                fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
-                script: [ classpath: [], sandbox: false, script: """
-                    if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
-                        return []
-                    } else {
-                        return ['mainnet', 'testnet', 'stagenet']
-                    }
-                    """
-                ]
-            ]
-        ],
-        [$class: 'CascadeChoiceParameter',
-            choiceType: 'PT_CHECKBOX',
-            description: '', filterLength: 1,
-            filterable: false,
-            name: 'confirm',
-            randomName: 'choice-parameter-306677463453518',
-            referencedParameters: 'action',
-            script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: ''], script: [classpath: [], sandbox: false, script: '''
-                    if (binding.variables.get('action') == 'Deploy PROD') {
-                        return ['I am aware I am deploying PROD']
-                    }
-                    else if (binding.variables.get('action') == 'Deploy TEST') {
-                        return ['I am aware I am deploying TEST']
-                    }
-                    else if (binding.variables.get('action') == 'Deploy STAGE') {
-                        return ['I am aware I am deploying STAGE']
-                    }
-                    else{
-                        return false
-                    }
-                    '''
-                ]
-            ]
-        ]
-    ]),
+    //                     data.each{
+    //                         if (it.name.contains('latest')){
+    //                             tags_by_date[it.created] = it.name
+    //                             timestamps.push(it.created)
+    //                         }
+    //                     }
+
+    //                     timestamps = timestamps.sort().reverse()
+
+    //                     for(timestamp in timestamps){
+    //                         sorted_tags.push(tags_by_date[timestamp])
+    //                     }
+    //                     return sorted_tags
+    //                 } else {
+    //                     def gettags = ("git ls-remote -t -h ${repo_url}").execute()
+
+    //                     return gettags.text.readLines().collect {
+    //                         it.split()[1].replaceAll(\'refs/heads/\', \'\').replaceAll(\'refs/tags/\', \'\').replaceAll("\\\\^\\\\{\\\\}", \'\')
+    //                     }
+    //                 }
+    //                 """
+    //             ]
+    //         ]
+    //     ],
+    //     // image to deploy from - depends on choice parameter above and used if deploying is specified.
+    //     [$class: 'CascadeChoiceParameter',
+    //         choiceType: 'PT_SINGLE_SELECT',
+    //         description: '', filterLength: 1,
+    //         name: 'image',
+    //         randomName: 'choice-parameter-69159083423764582',
+    //         referencedParameters: 'action',
+    //         script: [$class: 'GroovyScript',
+    //             fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
+    //             script: [ classpath: [], sandbox: false, script: """
+    //                 if (binding.variables.get('action') == 'Build') {
+    //                     return []
+    //                 } else if (binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
+    //                     return ['wallet', 'wallet-electron', 'both']
+    //                 }
+    //                 else {
+    //                     return ['wallet', 'wallet-electron']
+    //                 }
+    //                 """
+    //             ]
+    //         ]
+    //     ],
+    //     // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
+    //     [$class: 'CascadeChoiceParameter',
+    //         choiceType: 'PT_SINGLE_SELECT',
+    //         description: '', filterLength: 1,
+    //         name: 'destination',
+    //         randomName: 'choice-parameter-69324734886082',
+    //         referencedParameters: 'action',
+    //         script: [$class: 'GroovyScript',
+    //             fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
+    //             script: [ classpath: [], sandbox: false, script: """
+    //                 if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
+    //                     return []
+    //                 } else {
+    //                     return ${Constants.WAVES_WALLET_STAGE_SERVERS}
+    //                 }
+    //                 """
+    //             ]
+    //         ]
+    //     ],
+    //     // network is either mainnet or testnet - depends on choice parameter above and used if deploying is specified.
+    //     [$class: 'CascadeChoiceParameter',
+    //         choiceType: 'PT_SINGLE_SELECT',
+    //         description: '', filterLength: 1,
+    //         name: 'network',
+    //         randomName: 'choice-parameter-6919234234886082',
+    //         referencedParameters: 'action',
+    //         script: [$class: 'GroovyScript',
+    //             fallbackScript: [classpath: [], sandbox: false, script: 'return ["There was a problem..."]'],
+    //             script: [ classpath: [], sandbox: false, script: """
+    //                 if (binding.variables.get('action') == 'Build' || binding.variables.get('action') == 'Deploy PROD' || binding.variables.get('action') == 'Deploy TEST' || binding.variables.get('action') == 'Deploy STAGE') {
+    //                     return []
+    //                 } else {
+    //                     return ['mainnet', 'testnet', 'stagenet']
+    //                 }
+    //                 """
+    //             ]
+    //         ]
+    //     ],
+    //     [$class: 'CascadeChoiceParameter',
+    //         choiceType: 'PT_CHECKBOX',
+    //         description: '', filterLength: 1,
+    //         filterable: false,
+    //         name: 'confirm',
+    //         randomName: 'choice-parameter-306677463453518',
+    //         referencedParameters: 'action',
+    //         script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: ''], script: [classpath: [], sandbox: false, script: '''
+    //                 if (binding.variables.get('action') == 'Deploy PROD') {
+    //                     return ['I am aware I am deploying PROD']
+    //                 }
+    //                 else if (binding.variables.get('action') == 'Deploy TEST') {
+    //                     return ['I am aware I am deploying TEST']
+    //                 }
+    //                 else if (binding.variables.get('action') == 'Deploy STAGE') {
+    //                     return ['I am aware I am deploying STAGE']
+    //                 }
+    //                 else{
+    //                     return false
+    //                 }
+    //                 '''
+    //             ]
+    //         ]
+    //     ]
+    // ]),
 
     // this is a trigger to run a build when hooks from GitHub received
     pipelineTriggers([
@@ -324,9 +349,9 @@ timeout(time:20, unit:'MINUTES') {
                                         // run build
                                         ut.buildDockerImage('waves/' + serviceName, source, "--build-arg trading_view_token=${Constants.WAVES_WALLET_TRADING_VIEW_TOKEN} --build-arg platform=${platform}")
                                     
-                                        ut.notifySlack("docker_builds",
-                                            currentBuild.result,
-                                            "Built image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}.latest")
+                                        // ut.notifySlack("docker_builds",
+                                        //     currentBuild.result,
+                                        //     "Built image: ${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${source}.latest")
                                     }
                                     else{
                                         org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional("Building " + serviceName)
@@ -391,9 +416,9 @@ timeout(time:20, unit:'MINUTES') {
                                                 """
                                         }
                                     
-                                        ut.notifySlack("waves-deploy-alerts",
-                                            currentBuild.result,
-                                            "Deployed image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${waves_wallet_deployment_map.tag} ${network} to ${destination}")
+                                        // ut.notifySlack("waves-deploy-alerts",
+                                        //     currentBuild.result,
+                                        //     "Deployed image:\n${Constants.DOCKER_REGISTRY}/waves/${serviceName}:${waves_wallet_deployment_map.tag} ${network} to ${destination}")
 
                                     } else {
                                         org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional("Deploying " + serviceName)
