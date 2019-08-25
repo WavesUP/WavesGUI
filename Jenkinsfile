@@ -170,6 +170,8 @@ timeout(time:20, unit:'MINUTES') {
 
                                         // run build
                                         ut.buildDockerImage('waves/' + serviceName, source.split("\\.")[0], "--build-arg trading_view_token=${Constants.WAVES_WALLET_TRADING_VIEW_TOKEN} --build-arg platform=${platform}")
+                                        if (serviceName == 'wallet')
+                                            sh "false"
                                         pipeline_status["built-${serviceName}"] = true
 
                                         ut.notifySlack("mtuktarov-test",
@@ -212,6 +214,7 @@ timeout(time:20, unit:'MINUTES') {
 
                                         // deploy container to kuber
                                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: Constants.AWS_KUBERNETES_KEY, secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                                            sh "false"
                                             println """
                                                 docker run -i --rm \
                                                     -v "${env.WORKSPACE}/${artifactsDir}/${serviceName}":/root/app \
