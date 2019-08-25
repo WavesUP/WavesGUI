@@ -38,8 +38,8 @@ properties([
 
     ut.buildDiscarderPropertyObject('14', '30'),
 
-    parameters([
-        choice(choices: ['Build', 'Build and Deploy', 'Deploy', 'Deploy PROD', 'Deploy TEST', 'Deploy STAGE'], description: '', name: 'action'),
+    // parameters([
+    //     choice(choices: ['Build', 'Build and Deploy', 'Deploy', 'Deploy PROD', 'Deploy TEST', 'Deploy STAGE'], description: '', name: 'action'),
 
         // source depends on choice parameter above and dynamically
         // loads either Git repo branches for building
