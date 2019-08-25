@@ -53,14 +53,14 @@ properties([
                 // loads either Git repo branches for building or Docker Registry tags for deploy
                 ut.cascadeChoiceParameterObject('source', scripts.getBranchesOrTags('waves/wallet', 'Waves', repo_url), 'action', 'PARAMETER_TYPE_SINGLE_SELECT', true),
                 
-                // network is either mainnet, testnet or stagenet - depends on choice parameter above and used if deploying is specified.
-                ut.cascadeChoiceParameterObject('network', scripts.getNetworks(), 'action'),
-                
                 // image to deploy from - depends on choice parameter above and used if deploying is specified.
                 ut.cascadeChoiceParameterObject('image', scripts.getImages(), 'action'),
 
+                // network is either mainnet, testnet or stagenet - depends on choice parameter above and used if deploying is specified.
+                ut.cascadeChoiceParameterObject('network', scripts.getNetworks(), 'action,image'),
+                
                 // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
-                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.VORDEX_WALLET_STAGE_SERVERS, true), 'action'),
+                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.WAVES_WALLET_STAGE_SERVERS, true), 'action'),
                 
                 // confirm is an extra check before we deploy to prod
                 ut.cascadeChoiceParameterObject('confirm', scripts.getConfirms(), 'action', 'PARAMETER_TYPE_CHECK_BOX'),
