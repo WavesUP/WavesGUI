@@ -99,6 +99,8 @@ stage('Aborting this build'){
         "image: ${image}\n" +
         "destination: ${destination}\n" +
         "network: ${network}"
+        if (action.contains('Deploy')) pipeline_tasks['deploy'] = true
+        if (action.contains('Build')) pipeline_tasks['build'] = true
 }
 
 if (currentBuild.result == Constants.PIPELINE_ABORTED){
