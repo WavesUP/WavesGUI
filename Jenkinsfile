@@ -57,10 +57,10 @@ properties([
                 ut.cascadeChoiceParameterObject('image', scripts.getImages(), 'action'),
 
                 // network is either mainnet, testnet or stagenet - depends on choice parameter above and used if deploying is specified.
-                ut.cascadeChoiceParameterObject('network', scripts.getNetworks(), 'action,image'),
+                ut.cascadeChoiceParameterObject('network', scripts.getNetworks(), 'action'),
                 
                 // destination is a remote server to deploy to - depends on choice parameter above and used if deploying is specified.
-                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.WAVES_WALLET_STAGE_SERVERS, true), 'action'),
+                ut.cascadeChoiceParameterObject('destination', scripts.getDestinations(Constants.WAVES_WALLET_PROD_DOMAIN_NAMES, Constants.WAVES_WALLET_STAGE_SERVERS, true), 'action,image'),
                 
                 // confirm is an extra check before we deploy to prod
                 ut.cascadeChoiceParameterObject('confirm', scripts.getConfirms(), 'action', 'PARAMETER_TYPE_CHECK_BOX'),
